@@ -56,7 +56,7 @@ dkms.conf
 
 #Folders
 Backup/**
-#build/**
+build/**
 debug/**
 dist/**
 MAKEFILE

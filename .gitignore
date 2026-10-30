@@ -53,3 +53,11 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+#Folders
+Backup/**
+build/**
+nbproject/**
+debug/**
+dist/**
+MAKEFILE

@@ -57,6 +57,7 @@ dkms.conf
 #Folders
 Backup/**
 build/**
+nbproject/**
 debug/**
 dist/**
 MAKEFILE

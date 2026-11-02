@@ -50,14 +50,12 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
-
+private.xml
 # debug information files
 *.dwo
 
 #Folders
 Backup/**
 build/**
-nbproject/**
 debug/**
 dist/**
-MAKEFILE

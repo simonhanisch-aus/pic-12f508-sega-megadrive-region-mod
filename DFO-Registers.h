@@ -19,21 +19,22 @@
 
 #ifndef SI5351A_REVB_REG_CONFIG_HEADER
 #define SI5351A_REVB_REG_CONFIG_HEADER
-#define SI5351A_REVB_REG_CONFIG_NUM_REGS 74
+#define SI5351A_REVB_REG_CONFIG_NUM_REGS 72
 #define clock_enable_reg 0x03
 #define SI5351A_REVB_REG_READ_NUM_REGS 5
 #define SI5351_ADDR 0x60 << 1   // 0x60 << 1 (write mode)
 #define SI5351_ADDR_READ SI5351_ADDR | 1   // (0x60 << 1 | 1)  (read mode)
 
-const unsigned char clock_enable_values[3] ={
+const unsigned char clock_enable_values[4] ={
     0xFB, //PAL
     0xFE, //NTSC 
+    0xFB, //PAL
     0xFC //NTSC 4.43
 };
 const unsigned char si5351a_revb_read_registers[SI5351A_REVB_REG_READ_NUM_REGS] ={
-    0x00, //read
+    0xFF, //read - 0xFF is essentially releasing the bus for 8 bits
     clock_enable_reg, //Clock enable read
-    0x00, //read
+    0xFF, //read
     0x00, //Status
     clock_enable_reg //Clock enable set
 };

@@ -16,9 +16,9 @@ static volatile uint8_t GPIO_SHADOW;
 static volatile uint8_t STATUS_REG = 0x0F;
 static volatile uint8_t SDA_SHADOW = 0x01;
 static volatile uint8_t CLOCK_ENABLE_VAL = 0xFF;
+static volatile uint8_t counter = 0x0A;
+static volatile uint8_t has_error = 0x00;
 
-#define STATUS_REG_REGION 0
-#define STATUS_REG_PAL60 1
 #define STATUS_REG_ERROR 2
 #define STATUS_REG_RETRY 3
 #define STATUS_REG_WAIT 4 //4-7 wait timer
@@ -33,7 +33,7 @@ static volatile uint8_t CLOCK_ENABLE_VAL = 0xFF;
 #define SDA_PIN 5 //We dont need to listen to any i2c communication attempts from the Si so dont need to waste a wake up pin on it
 
 #define TRIS_DEFAULT 0xFB
-#define GPIO_DEFAULT 0xFF
+#define GPIO_DEFAULT 0xCF
 //OPTION GPWU | GPPU | T0CS | T0SE | PSA | PS2 | PS1 | PS0
 #define OPTION_DEFAULT 0x0F
 
@@ -123,7 +123,7 @@ void main(void) {
     OPTION = OPTION_DEFAULT;
 
     // Write registers to Si5351 to configure clocks
-    for (uint8_t i = SI5351A_REVB_REG_CONFIG_NUM_REGS - 1; i > 0; i--) {
+    for (uint8_t i = 0; i < SI5351A_REVB_REG_CONFIG_NUM_REGS; i++) {
 
         i2c_start();
         i2c_write(SI5351_ADDR);
@@ -147,40 +147,37 @@ void main(void) {
     // Start loop - set clock output enable and check status registers to make sure there are no
     // issues. Sleep if all looking good. Changing either the NETSC/PAL or PAL60 pin will reset the microcontroller
     // as will resetting the console.
-    uint8_t counter = 0x0A;
-    uint8_t has_error = 0x00;
     CLOCK_ENABLE_VAL = 0xFF;
     while (1) {
 
-        //Sync shadow GPIO with input pin states
-        status_reg_set((1 << REGION_IN_PIN) | (1 << STATUS_REG_REGION));
-        status_reg_clr(GPIO & (((1 << REGION_IN_PIN) == 0) << STATUS_REG_REGION) | (((1 << PAL_SUBCR_EN_PIN)) << STATUS_REG_PAL60));
-        CLOCK_ENABLE_VAL = clock_enable_values[(STATUS_REG & (1 << STATUS_REG_REGION)) + (STATUS_REG & (1 << STATUS_REG_REGION))];
+        CLOCK_ENABLE_VAL = clock_enable_values[GPIO & (1 << REGION_IN_PIN | 1 << PAL_SUBCR_EN_PIN)];
         // Read status register and output a LED if clock/pll/xtal error is found
         // Read clock enable status
 
         __delay_ms(1000);
-        for (uint8_t i = SI5351A_REVB_REG_READ_NUM_REGS - 1; i > 0; i--) {
+        has_error = 0x00;
+        for (uint8_t i = SI5351A_REVB_REG_READ_NUM_REGS; i > 0; i--) {
             i2c_start();
-            i2c_write(si5351a_revb_read_addresses[i]);
-            uint8_t read_value = i2c_write(si5351a_revb_read_registers[i]);
-            if (i == SI5351A_REVB_REG_READ_NUM_REGS - 1) {
+            i2c_write(si5351a_revb_read_addresses[i - 1]);
+            uint8_t read_value = i2c_write(si5351a_revb_read_registers[i - 1]);
+            if (i == SI5351A_REVB_REG_READ_NUM_REGS) {
                 i2c_write(CLOCK_ENABLE_VAL);
+            } else
+                // set error LED
+                if (i == 3) {
+                has_error |= read_value & 0xFC; // Bits 8 7 6 5 4 3 should trigger an alert (set low)
+            } else
+                if (i == 1) {
+                has_error |= read_value ^ CLOCK_ENABLE_VAL;
             }
-
-            // set error LED
-            has_error = 0x00;
-            has_error |= (i | (read_value & 0x78)) == 0x00; // Bits 7 6 5 4 3 should trigger an alert (set low)
-            has_error |= ((i & ~(2)) | (read_value ^ CLOCK_ENABLE_VAL)) == 0x00; // should be the same value
-            gpio_set((uint8_t) (has_error << STATUS_ERROR_PIN));
 
             i2c_stop();
         }
-
+        gpio_set((uint8_t) ((!!has_error) << STATUS_ERROR_PIN));
         counter--;
 
         // Go into sleep mode if counter expires or status is reporting no issues
-        if ((has_error == 0) | (counter == 0)) {
+        if (!has_error | (counter == 0)) {
             SLEEP();
         }
     }

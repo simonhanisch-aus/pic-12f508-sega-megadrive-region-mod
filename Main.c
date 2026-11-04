@@ -103,11 +103,12 @@ uint8_t i2c_write(unsigned char byte) {
         i2c_set((uint8_t) (((byte & 1) == 0) << SDA_PIN));
         //wait for clock stretching
         while (((GPIO & (1 << SCL_PIN)) == 0) & (STATUS_REG < 0xE0)) {
-            __delay_ms(1);
+            WAIT();
             STATUS_REG = (STATUS_REG + 0x10);
         }
         status_reg_clr(0xF0);
-        result = (uint8_t) (result << 1) | (GPIO & (1 << SDA_PIN));
+        result =  ((uint8_t)(result << 1) | (uint8_t)(GPIO >> SDA_PIN)); // SDA happens to be the last pin conveniently
+        gpio_set((uint8_t)((result ^ 1 & 1) << STATUS_ERROR_PIN));
     }
     ACK();
 

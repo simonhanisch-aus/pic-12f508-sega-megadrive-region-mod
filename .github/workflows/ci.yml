@@ -1,0 +1,21 @@
+name: Firmware CI
+on:
+  pull_request:
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Unity (skip if vendored)
+        run: |
+          git clone --depth 1 https://github.com/ThrowTheSwitch/Unity.git third_party/unity
+
+      - name: Build & run tests
+        run: |
+          mkdir -p build
+          gcc -std=c99 -I src -I third_party/unity/src \
+              tests/*.c src/logic/*.c third_party/unity/src/unity.c \
+              -o build/test_runner
+          ./build/test_runner
